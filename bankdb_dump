@@ -1,0 +1,291 @@
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 13.1
+-- Dumped by pg_dump version 13.1
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: account; Type: TABLE; Schema: public; Owner: max
+--
+
+CREATE TABLE public.account (
+    balance numeric(12,2),
+    irate numeric(5,2) NOT NULL,
+    accid integer NOT NULL,
+    cusid integer
+);
+
+
+ALTER TABLE public.account OWNER TO max;
+
+--
+-- Name: bank; Type: TABLE; Schema: public; Owner: max
+--
+
+CREATE TABLE public.bank (
+    bankid integer NOT NULL
+);
+
+
+ALTER TABLE public.bank OWNER TO max;
+
+--
+-- Name: bankbranch; Type: TABLE; Schema: public; Owner: max
+--
+
+CREATE TABLE public.bankbranch (
+    addr character(50),
+    city character(30),
+    state character(2),
+    zip character(5),
+    bankid integer
+);
+
+
+ALTER TABLE public.bankbranch OWNER TO max;
+
+--
+-- Name: ceo; Type: TABLE; Schema: public; Owner: max
+--
+
+CREATE TABLE public.ceo (
+    name character(30),
+    adminid integer NOT NULL,
+    bankid integer
+);
+
+
+ALTER TABLE public.ceo OWNER TO max;
+
+--
+-- Name: customer; Type: TABLE; Schema: public; Owner: max
+--
+
+CREATE TABLE public.customer (
+    usern character(32),
+    phash character(60),
+    fullname character(50),
+    cusid integer NOT NULL,
+    bankid integer
+);
+
+
+ALTER TABLE public.customer OWNER TO max;
+
+--
+-- Name: transaction; Type: TABLE; Schema: public; Owner: max
+--
+
+CREATE TABLE public.transaction (
+    merchant character(32),
+    description character(100),
+    date date,
+    amount numeric(10,2),
+    transid integer NOT NULL,
+    accid integer
+);
+
+
+ALTER TABLE public.transaction OWNER TO max;
+
+--
+-- Data for Name: account; Type: TABLE DATA; Schema: public; Owner: max
+--
+
+COPY public.account (balance, irate, accid, cusid) FROM stdin;
+20000.00	0.05	1301	2
+536.00	0.14	1675	3
+60000.00	0.07	1824	4
+360.00	0.12	2598	5
+2000000.00	0.00	908	2
+16000.00	0.07	1991	3
+\.
+
+
+--
+-- Data for Name: bank; Type: TABLE DATA; Schema: public; Owner: max
+--
+
+COPY public.bank (bankid) FROM stdin;
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+\.
+
+
+--
+-- Data for Name: bankbranch; Type: TABLE DATA; Schema: public; Owner: max
+--
+
+COPY public.bankbranch (addr, city, state, zip, bankid) FROM stdin;
+1012 W Main St                                    	Walnut Ridge                  	AR	72476	2
+6790 W Willis Ct                                  	Dunnellon                     	FL	34433	1
+3016 Whites Chapel Pkwy                           	Cityname                      	AL	35173	2
+71 Whipperwill Ln                                 	Goodwater                     	AL	35072	2
+920 Sampson St                                    	Seminole                      	OK	74868	3
+9 Muriel Ln                                       	Schaghticoke                  	NY	12154	1
+3440 Brophy Dr                                    	Fort Garland                  	CO	81133	4
+1935 Wetherburn Rd                                	Christianburg                 	VA	24073	5
+3 Miacomet Ave                                    	Nantucket                     	MA	2554 	5
+1395 Street                                       	Port Townsend                 	WA	98368	1
+\.
+
+
+--
+-- Data for Name: ceo; Type: TABLE DATA; Schema: public; Owner: max
+--
+
+COPY public.ceo (name, adminid, bankid) FROM stdin;
+John Doe                      	1	1
+Si Eo                         	2	2
+Sarah Thompson                	3	3
+Terry Bulgard                 	4	4
+Rich Evans                    	5	5
+Kraig Connel                  	6	6
+\.
+
+
+--
+-- Data for Name: customer; Type: TABLE DATA; Schema: public; Owner: max
+--
+
+COPY public.customer (usern, phash, fullname, cusid, bankid) FROM stdin;
+Rebelc1219                      	5F4DCC3B5AA765D61D8327DEB882CF99                            	Rebecca Curry                                     	1	2
+Smithy19                        	C383BD5C4F0E83B3CF96C7FBC08BE196                            	John Doe                                          	2	3
+Greenery23                      	1B57741D771373DDF87DE3FAA4DCE5D8                            	Bob Greene                                        	3	2
+AndyMan                         	29B02285567B7E76FB68A23ED668DFB7                            	Andrew Willis                                     	4	1
+DRich2                          	6FB8222FC76259322FBD6979EA329C56                            	Dennis Richards                                   	5	5
+LouisvilleSlugger               	7823E92A2508A52857B9615E90EF0E9D                            	Kevin Louis                                       	6	3
+JJamison14                      	49F1FA08728F3FAB67065ED7088E461D                            	James Jamison                                     	8	3
+Barks1993                       	F35D29AA88370B4CD25B92E85899AECD                            	Greg Barks                                        	9	3
+SJohnson3                       	B59E68E5610C45A9C3499C4A7FF93D38                            	Sarah Johnson                                     	10	2
+Smithy19                        	C383BD5C4F0E83B3CF96C7FBC08BE199                            	John Doe                                          	11	3
+RMartin5                        	BB2FED371134F9E62F5EE11207003E45                            	Robert Martin                                     	7	2
+\.
+
+
+--
+-- Data for Name: transaction; Type: TABLE DATA; Schema: public; Owner: max
+--
+
+COPY public.transaction (merchant, description, date, amount, transid, accid) FROM stdin;
+Walmart                         	Medicine                                                                                            	2020-01-01	-50.00	1	1301
+Wells Fargo Bank                	Gift                                                                                                	2019-01-01	250.00	2	1301
+Walmart                         	Withdrawal                                                                                          	2020-01-01	-64.00	3	1675
+Venmo                           	Funds transfer                                                                                      	2019-12-01	6.00	4	1675
+Apartment LLC                   	Rent payment                                                                                        	2016-01-01	-600.00	5	1824
+Circle K                        	Chewing gum                                                                                         	2017-05-04	-4.12	6	2598
+Walmart                         	Home items                                                                                          	2017-05-04	-45.20	7	2598
+Target                          	School equipment                                                                                    	2020-10-10	-16.77	8	908
+ASU                             	Tuition payment                                                                                     	1998-03-09	-3521.01	9	908
+ACME                            	Bank transfer                                                                                       	2015-04-24	2905.00	10	2598
+\.
+
+
+--
+-- Name: account account_pkey; Type: CONSTRAINT; Schema: public; Owner: max
+--
+
+ALTER TABLE ONLY public.account
+    ADD CONSTRAINT account_pkey PRIMARY KEY (accid);
+
+
+--
+-- Name: bank bank_pkey; Type: CONSTRAINT; Schema: public; Owner: max
+--
+
+ALTER TABLE ONLY public.bank
+    ADD CONSTRAINT bank_pkey PRIMARY KEY (bankid);
+
+
+--
+-- Name: ceo ceo_pkey; Type: CONSTRAINT; Schema: public; Owner: max
+--
+
+ALTER TABLE ONLY public.ceo
+    ADD CONSTRAINT ceo_pkey PRIMARY KEY (adminid);
+
+
+--
+-- Name: customer customer_pkey; Type: CONSTRAINT; Schema: public; Owner: max
+--
+
+ALTER TABLE ONLY public.customer
+    ADD CONSTRAINT customer_pkey PRIMARY KEY (cusid);
+
+
+--
+-- Name: transaction transaction_pkey; Type: CONSTRAINT; Schema: public; Owner: max
+--
+
+ALTER TABLE ONLY public.transaction
+    ADD CONSTRAINT transaction_pkey PRIMARY KEY (transid);
+
+
+--
+-- Name: account account_cusid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: max
+--
+
+ALTER TABLE ONLY public.account
+    ADD CONSTRAINT account_cusid_fkey FOREIGN KEY (cusid) REFERENCES public.customer(cusid);
+
+
+--
+-- Name: ceo ceo_bankid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: max
+--
+
+ALTER TABLE ONLY public.ceo
+    ADD CONSTRAINT ceo_bankid_fkey FOREIGN KEY (bankid) REFERENCES public.bank(bankid);
+
+
+--
+-- Name: customer customer_bankid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: max
+--
+
+ALTER TABLE ONLY public.customer
+    ADD CONSTRAINT customer_bankid_fkey FOREIGN KEY (bankid) REFERENCES public.bank(bankid);
+
+
+--
+-- Name: bankbranch foreign_bid; Type: FK CONSTRAINT; Schema: public; Owner: max
+--
+
+ALTER TABLE ONLY public.bankbranch
+    ADD CONSTRAINT foreign_bid FOREIGN KEY (bankid) REFERENCES public.bank(bankid);
+
+
+--
+-- Name: transaction transaction_accid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: max
+--
+
+ALTER TABLE ONLY public.transaction
+    ADD CONSTRAINT transaction_accid_fkey FOREIGN KEY (accid) REFERENCES public.account(accid);
+
+
+--
+-- PostgreSQL database dump complete
+--
+
