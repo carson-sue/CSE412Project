@@ -4,6 +4,61 @@
 
 #include "bank.h"
 
+char* generateHash(char* pass)
+{
+	unsigned char hash[SHA256_DIGEST_LENGTH];
+	char* hashString = (char*) malloc(SHA256_DIGEST_LENGTH * sizeof(char));
+
+	SHA256_CTX context;
+	SHA256_Init(&context);
+	SHA256_Update(&context, pass, strlen(pass));
+	SHA256_Final(hash, &context);
+	
+	/*This only gets every other character in the hash but I'm sure that's fine
+	 * I tried for like 2 hours to get both characters before giving up*/
+	for(int i = 0; i < SHA256_DIGEST_LENGTH; i++)
+		sprintf(hashString+i, "%02x", hash[i]);
+
+	return hashString;
+}
+
+bool login(char* name, char* pass, char* userType, PGresult *res, PGconn *conn)
+{
+	char* hash = generateHash(pass);
+
+	/*Since I wasn't sure if I could modify our tables since
+	that would modify our schema, I instead opted to add
+	an admin login account that has it's info stored in
+	bank.h*/
+	if(strcmp(name, ADMINNME) == 0 &&
+	   strcmp(hash, ADMINPSWD) == 0)
+	{
+		*userType = 'a';
+		return true;
+	}
+	else
+	{
+		const char *evalues[2] = {name, hash};
+		int elength[2] = {sizeof(name), sizeof(hash)};
+		int ebinary[2] = {0, 0};
+
+		res = PQexecParams(conn, "SELECT usern, phash FROM customer WHERE "
+			       "usern = $1::varchar and phash = $2::varchar", 2, NULL, evalues, elength, ebinary, 0);
+		select_error(res, conn);
+
+		if(PQntuples(res) == 1)
+		{
+			*userType = 'c';
+			return true;
+		}
+		else if(PQntuples(res) > 1)
+			printf("What\n");
+	}
+
+	return false;
+}
+
+//TODO modify more attributes. update account of users
 int
 edit_trans_rec(PGresult *res, PGconn *conn)
 {
@@ -77,8 +132,8 @@ edit_cust_rec(PGresult *res, PGconn *conn)
 	elength[1] = sizeof(bankid);
 
 	res = PQexecParams(conn, "UPDATE customer"
-			" SET bankid = $2::int4,"
-			" fullname = $1::varchar(32)"
+			" SET fullname = $1::varchar(32),"
+			" bankid = $2::int4"
 			" WHERE cusid = $3::int4", 3, NULL, evalues, elength,
 			ebinary, 0);
 	delete_error(res, conn);
@@ -91,7 +146,84 @@ edit_cust_rec(PGresult *res, PGconn *conn)
 }
 
 int
-insert_rec(PGresult *res, PGconn *conn)
+edit_bank_rec(PGresult *res, PGconn *conn)
+{
+	const char	*evalues[7];
+	int		elength[7];
+	int		ebinary[7] = {0, 0, 0, 0, 1, 0, 0};
+	uint32_t	bankid;
+
+	evalues[0] = malloc(BUFSIZE);
+	evalues[1] = malloc(BUFSIZE);
+	evalues[2] = malloc(BUFSIZE);
+	evalues[3] = malloc(BUFSIZE);
+	evalues[5] = malloc(BUFSIZE);
+	evalues[6] = malloc(BUFSIZE);
+
+	printf("Enter bank state to update: ");
+	scanf("%32[^\n]", (char *) evalues[5]);
+	getchar();
+	elength[5] = strlen(evalues[5]);
+
+	printf("Enter bank address to update: ");
+	scanf("%32[^\n]", (char *) evalues[6]);
+	getchar();
+	elength[6] = strlen(evalues[6]);
+
+	printf("Enter new address: ");
+	scanf("%32[^\n]", (char *) evalues[0]);
+	getchar();
+	elength[0] = strlen(evalues[0]);
+
+	printf("Enter new city: ");
+	scanf("%32[^\n]", (char *) evalues[1]);
+	getchar();
+	elength[1] = strlen(evalues[1]);
+
+	printf("Enter new state: ");
+	scanf("%32[^\n]", (char *) evalues[2]);
+	getchar();
+	elength[2] = strlen(evalues[2]);
+
+	printf("Enter new zipcode: ");
+	scanf("%32[^\n]", (char *) evalues[3]);
+	getchar();
+	elength[3] = strlen(evalues[3]);
+
+	printf("Enter new bank ID: ");
+	scanf(" %d", &bankid);
+	getchar();
+	bankid = htonl((uint32_t) bankid);
+	evalues[4] = (char *) &bankid;
+	elength[4] = sizeof(bankid);
+
+	res = PQexecParams(conn, "UPDATE bankbranch"
+			" SET addr = $1::varchar(50),"
+			" city = $2::varchar(30),"
+			" state = $3::varchar(2),"
+			" zip = $4::varchar(5),"
+			" bankid = $5::int4"
+			" WHERE state = $6::varchar(2)"
+			" and addr = $7::varchar(50)", 7, NULL, evalues, elength, ebinary, 0);
+	delete_error(res, conn);
+
+	printf("Status: %s\n", PQcmdStatus(res));
+
+	free((void *) evalues[0]);
+	
+	return 0;
+}
+
+int
+edit_acc_rec(PGresult *res, PGconn *conn)
+{
+	//TODO
+
+	return 0;
+}
+
+int
+insert_trans_rec(PGresult *res, PGconn *conn)
 {
 	float		amount;
 	int		c, accID, transID;
@@ -132,6 +264,30 @@ insert_rec(PGresult *res, PGconn *conn)
 	res = PQexecParams(conn, "SELECT * FROM transaction", 0, NULL, NULL, NULL, NULL, 0);
 	select_error(res, conn);
 	display_insertion_menu(res);
+
+	return 0;
+}
+
+int
+insert_cust_rec(PGresult *res, PGconn *conn)
+{
+	//TODO
+	
+	return 0;
+}
+
+int
+insert_bank_rec(PGresult *res, PGconn *conn)
+{
+	//TODO
+
+	return 0;
+}
+
+int
+insert_acc_rec(PGresult *res, PGconn *conn)
+{
+	//TODO
 
 	return 0;
 }
@@ -287,6 +443,7 @@ viewid_rec(PGresult *res, PGconn *conn, char type)
 	return 0;
 }
 
+//TODO expand delete for account, bank, and customer
 int
 delete_rec(PGresult *res, PGconn *conn)
 {
@@ -317,12 +474,15 @@ accounts(PGresult *res, PGconn *conn)
 	do {
 		printf("\n===========       Accounts      ===========\n");
 		printf("Choose an option:\n");
-		printf("\n\t-v View bank accounts\n\t"
+		printf("\n\t-e Edit account information\n\t"
+			"-v View bank accounts\n\t"
 			"-q Quit to main menu\n\t-x Exit program\n");
 		c = getchar();
 		getchar();
 		if (c == 'v')
 			viewid_rec(res, conn, 'a');
+		else if (c == 'e')
+			edit_acc_rec(res, conn);
 		else if (c == 'x')
 			exit_success(conn);
 	} while (c != EOF && c != '\n' && c != 'q');
@@ -362,12 +522,15 @@ banks(PGresult *res, PGconn *conn)
 	do {
 		printf("\n===========        Banks        ===========\n");
 		printf("Choose an option:\n");
-		printf("\n\t-v View bank branches\n\t"
+		printf("\n\t-e Edit bank information\n\t"
+			"-v View bank branches\n\t"
 			"-q Quit to main menu\n\t-x Exit program\n");
 		c = getchar();
 		getchar();
 		if (c == 'v')
 			viewid_rec(res, conn, 'b');
+		else if (c == 'e')
+			edit_bank_rec(res, conn);
 		else if (c == 'x')
 			exit_success(conn);
 	} while (c != EOF && c != '\n' && c != 'q');
@@ -393,7 +556,7 @@ transactions(PGresult *res, PGconn *conn)
 		else if (c == 'e')
 			edit_trans_rec(res, conn);
 		else if (c == 'i')
-			insert_rec(res, conn);
+			insert_trans_rec(res, conn);
 		else if (c == 'v')
 			view_rec(res, conn, 't');
 		else if (c == 'x')
