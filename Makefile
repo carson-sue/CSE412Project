@@ -2,6 +2,8 @@ TARGET = prog
 CC = cc
 CFLAGS = -g -Wall
 LIBS = -L/usr/local/lib
+#-L/usr/lib/x86_64-linux-gnu. -lbsd in gcc
+#-I/usr/include/postgresql in first gcc
 
 # PHONY names are not associated with files
 .PHONY: default all clean
@@ -23,7 +25,7 @@ HEADERS = $(wildcard *.h)
 
 # Generates output file
 $(TARGET): $(OBJECTS)
-	$(CC) $(OBJECTS) -Wall $(LIBS) -o $@ -lpq
+	$(CC) $(OBJECTS) -Wall $(LIBS) -o $@ -lpq -lcrypto
 
 clean:
 	-rm -f *.o
