@@ -1,0 +1,202 @@
+BANK APPLICATION MANUAL
+=======================
+
+Building the program
+--------------------
+
+The program uses the standard PostgreSQL C library called "libpq". To use this library, execute the commands below. These commands will tell you where the Postgres include files and library directory is on your computer.
+
+	$ pg_config --includedir
+	/usr/local/bin/pgsql/include
+
+	$ pg_config --libdir
+	/usr/local/lib
+
+Once you know where the PostgreSQL C library files are, compile the "main.c" file with the Postgres include directory. Then link the output files with the Postgres lib library to generate a standalone executable. The Makefile contains these instructions.
+
+	$ cc -c -I/usr/local/bin/pgsql/include main.c
+	$ cc -o prog main.o -L/usr/local/lib -lpq
+
+
+
+Connecting to the bank database
+-------------------------------
+
+If no arguments are supplied on the command line, the program will try to connect to the default database name.
+
+	./prog
+
+If you want to connect to a bank database with a different name, then enter the name of the database as the first parameter to the executable. As an example, if the name of the executable is "prog" and the name of the database is "bank" then you would enter the arguments below.
+
+	./prog "dbname = bank"
+
+A message stating "Connection successful" indicates that the database name was valid and the connection was successful. The message "Connection to database failed" indicates that the connection failed--check that the database server is running, and that the database name was entered correctly. There will also be an error message indicating the nature of the connection error.
+
+
+
+Start Screen
+------------
+
+After connecting to the database, you will see a prompt stating:
+
+	"Select an option to continue: "
+
+The options for the application are:
+- 'a': View bank accounts.
+- 'b': View banks.
+- 'c': View/edit customers.
+- 't': View/edit transactions.
+- 'x': Exit.
+
+After selecting an option, there will be a submenu for the option chosen. These are split up based on the initial selection. Use the 'q' option in the submenu to return to the start screen.
+
+
+
+Account Option
+--------------
+
+After selecting the bank option, there will be the following prompt:
+
+        "Choose an option: "
+
+The options for accounts are:
+- 'v' View customer accounts.
+- 'q' Quit to main menu.
+- 'x' Exit program.
+
+
+The view ('v') option displays the bank accounts of all customers. This option also allows you to filter based on customer ID, so that only bank accounts associated with a specific customer are displayed.
+
+	Filter by Customer ID? (y/n) y
+	Enter customer ID: 3
+	Status: SELECT 2
+
+
+
+Bank Option
+-----------
+
+After selecting the bank option, there will be the following prompt:
+
+	"Choose an option: "
+
+The options for transactions are:
+- 'v' View bank branches.
+- 'q' Quit to main menu.
+- 'x' Exit program.
+
+
+The view ('v') option allows you to view all of the bank branches. There will also be a prompt asking you if you want to filter by a bank ID: "Filter by Bank ID? (y/n)". If you answer "yes", then the program will ask you to enter the ID of the bank whose branches you want to view. Otherwise, all of the bank branches will be displayed. The program will show the status of the query: "Status: SELECT 3" and then display the results of the query.
+
+	Filter by Bank ID? (y/n) y
+	Enter bank ID: 2
+	Status: SELECT 3
+
+
+
+Customer Option
+---------------
+
+After selecting the bank option, there will be the following prompt:
+
+	"Choose an option: "
+
+The options for transactions are:
+- 'e' Edit customer information.
+- 'v' View customers.
+- 'q' Quit to main menu.
+- 'x' Exit program.
+
+
+The edit ('e') option allows you to edit the information associated with a customer. After choosing this option there will be several prompts asking you to enter the updated information for the customer. An example is shown below.
+
+	Enter customer ID to update: 7
+	Enter new customer name: Rob Martin
+	Enter new bank ID: 2
+	Status: UPDATE 1
+
+The customer ID should be an integer ID of an existing user. The customer name input expects a string containing the updated name. The new bank ID is an integer field that can be used to update which bank a customer is associated with. The "Status: UPDATE 1" message signifies that a record was successfully updated.
+
+
+The view ('v') option allows you to view the customers of all of the bank branches. As an option, there will be a prompt asking you if you want to filter by bank ID: "Filter by Bank ID? (y/n)". If you choose this option, then only customers associated with a particular bank will be displayed. Else, all customers will be displayed.
+
+	Filter by Bank ID? (y/n) y
+	Enter bank ID: 2
+	Status: SELECT 4
+
+
+
+Transaction Option
+------------------
+
+After selecting the transaction option, there will be a prompt stating:
+
+	"Choose an option: "
+
+The options for transactions are:
+- 'd' Delete transactions.
+- 'e' Edit transactions.
+- 'i' Insert transactions.
+- 'v' View transactions.
+- 'q' Quit to main menu.
+- 'x' Exit program.
+
+
+The delete ('d') option can be used to delete transactions from the database. After choosing the option, the program will display a list of all current transactions. There will then be a prompt stating: "Enter transaction ID to delete: ". Enter the numerical of the transID of the transaction you want to delete. The program will then respond with "Status: DELETE 1" where the number "1" will be the number of rows (transactions) that were deleted.
+
+
+The edit ('e') option allows you to edit the information associated with a transaction. The first prompt of this option is: "Enter transaction id to update: ". Enter the ID of the transaction you are trying to update. Then there will be a second prompt and third prompt asking you to enter the updated merchant and transaction description information. Enter a new description and merchant for the transaction. Descriptions should have a maximum of 32 characters. An example of an update query is shown below.
+
+	Enter transaction ID to update: 11
+	Enter new merchant: City of Tempe
+	Enter new transaction description: Refund
+	Status: UPDATE 1
+
+If the update was successful then the status message will show the number of columns that were updated.
+
+
+The insert ('i') option is used to insert new transactions into the database. After choosing this option, there will be several prompts asking you to enter the attributes of the transaction. The example below shows all of the information that has to be entered.
+
+	Enter merchant: City of Phoenix
+	Enter description: Parking Ticket
+	Enter date: 2020-11-11
+	Enter transaction amount: -55.43
+	Enter transaction ID: 11
+	Enter account ID: 1301
+	Status: INSERT 0 1
+
+The merchant and description fields are both string fields that can contain spaces. The date should be in "YYYY-MM-DD" format. The transaction amount is a positive or negative floating number. The transaction ID and account ID should be integers. After entering the information, the program will output the status. "Status: INSERT 0 1", for example, signifies that the transaction was inserted successfully into the table.
+
+
+The view ('v') option allows you to view all of the transactions in the database. The first prompt will ask whether you want to filter by a merchant. If you select yes ('y'), then only transactions of the merchant you entered will be displayed. For example, if you only want to see transactions with the merchant 'Walmart' you would enter the following:
+
+	Filter by merchant? (y/n) y
+	Enter merchant: Walmart
+	Sort by field? (y/n) n
+	Status: SELECT 3
+
+Note that the inputs entered are case-insensitive. For example, 'WALMART', 'Walmart', and 'walmart' would all return the same results.
+
+To sort by a field, input 'y' after the prompt "Sort by field? (y/n)". The program will then ask you to enter a field to sort by and whether to sort in ascending or descending order. The example below sorts all transactions by the transaction amount in descending order.
+
+	Filter by field? (y/n) n
+	Sort by field? (y/n) y
+	Enter field to sort by: amount
+	Ascending or descending? (a/d) d
+	Status: SELECT 10
+
+
+
+Exiting the program
+-------------------
+
+Choose the 'x' option at any menu screen to exit the program. The program will automatically finish the connection and complete.
+
+Choose the 'q' option in any of the submenus to return to the main menu.
+
+
+
+Security considerations
+-----------------------
+
+This program was not carefully audited for SQL injection vulnerabilities. Hence, this program should not be used if untrusted users can provide input on your system. Malicious input could cause harmful or unexpected behavior, since the program directly interfaces with the database.
