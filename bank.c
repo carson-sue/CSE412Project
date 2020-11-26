@@ -58,24 +58,27 @@ bool login(char* name, char* pass, char* userType, PGresult *res, PGconn *conn)
 	return false;
 }
 
-//TODO modify more attributes. update account of users
 int
 edit_trans_rec(PGresult *res, PGconn *conn)
 {
-	const char	*evalues[3];
-	int		elength[3];
-	int		ebinary[3] = {0, 0, 1};
-	uint32_t	keyid;
+	const char	*evalues[6], *svalues[1], *uvalues[2];
+	int		elength[6], slength[1], ulength[2];
+	int		ebinary[6] = {0, 0, 0, 0, 1, 1}, sbinary[1] = {1}, ubinary[2] = {0, 1};
+	uint32_t	keyid, accid;
+	float		amount, balance;
 
 	evalues[0] = malloc(BUFSIZE);
 	evalues[1] = malloc(BUFSIZE);
+	evalues[2] = malloc(BUFSIZE);
+	evalues[3] = malloc(BUFSIZE);
+	uvalues[0] = malloc(BUFSIZE);
 
 	printf("Enter transaction ID to update: ");
 	scanf(" %d", &keyid);
 	getchar();
 	keyid = htonl((uint32_t) keyid);
-	evalues[2] = (char *) &keyid;
-	elength[2] = sizeof(keyid);
+	evalues[5] = (char *) &keyid;
+	elength[5] = sizeof(keyid);
 
 	printf("Enter new merchant: ");
 	scanf("%32[^\n]", (char *) evalues[0]);
@@ -86,18 +89,85 @@ edit_trans_rec(PGresult *res, PGconn *conn)
 	scanf("%32[^\n]", (char *) evalues[1]);
 	getchar();
 	elength[1] = strlen(evalues[1]);
+	
+	printf("Enter new date: ");
+	scanf("%32[^\n]", (char *) evalues[2]);
+	getchar();
+	elength[2] = strlen(evalues[2]);
+	
+	printf("Enter new amount: ");
+	scanf("%32[^\n]", (char *) evalues[3]);
+	getchar();
+	elength[3] = strlen(evalues[3]);
+	amount = atof(evalues[3]);
+	
+	printf("Enter new account id: ");
+	scanf(" %d", &accid);
+	getchar();
+	accid = htonl((uint32_t) accid);
+	evalues[4] = (char *) &accid;
+	elength[4] = sizeof(accid);
+	svalues[0] = (char *) &accid;
+	slength[0] = sizeof(accid);
+	uvalues[1] = (char *) &accid;
+	ulength[1] = sizeof(accid);
+
+	res = PQexecParams(conn, "SELECT balance FROM account "
+				"WHERE accid = $1::int4", 1, NULL, svalues,
+				slength, sbinary, 0);
+	select_error(res, conn);
+
+	if(PQntuples(res) == 1)
+	{
+		balance = atof(PQgetvalue(res, 0, 0));
+	}
+	else
+	{
+		printf("ERROR: ACCOUNT NOT FOUND. ABORTING EDIT");
+		return 0;
+	}
+
+	svalues[0] = (char *) &keyid;
+	slength[0] = sizeof(keyid);
+
+	res = PQexecParams(conn, "SELECT amount FROM transaction "
+				"WHERE transid = $1::int4", 1, NULL, svalues,
+				slength, sbinary, 0);
+	select_error(res, conn);
+
+	if(PQntuples(res) == 1)
+	{
+		float temp = atof(PQgetvalue(res, 0, 0));
+		amount -= temp;
+		amount += balance;
+		
+		snprintf(uvalues[0], BUFSIZE, "%f", amount);
+		ulength[0] = strlen(svalues[0]);
+	}
 
 	res = PQexecParams(conn, "UPDATE transaction"
 			" SET description = $2::varchar(32),"
-			" merchant = $1::varchar(32)"
-			" WHERE transid = $3::int4", 3, NULL, evalues, elength,
+			" merchant = $1::varchar(32),"
+			" date = $3::date,"
+			" amount = $4::numeric(10,2),"
+			" accid = $5::int4"
+			" WHERE transid = $6::int4", 6, NULL, evalues, elength,
 			ebinary, 0);
+	delete_error(res, conn);
+
+	res = PQexecParams(conn, "UPDATE account"
+			" SET balance = $1::numeric(12,2)"
+			" WHERE accid = $2::int4", 2, NULL, uvalues,
+			ulength, ubinary, 0);
 	delete_error(res, conn);
 
 	printf("Status: %s\n", PQcmdStatus(res));
 
 	free((void *) evalues[0]);
 	free((void *) evalues[1]);
+	free((void *) evalues[2]);
+	free((void *) evalues[3]);
+	free((void *) uvalues[0]);
 
 	return 0;
 }
@@ -210,6 +280,11 @@ edit_bank_rec(PGresult *res, PGconn *conn)
 	printf("Status: %s\n", PQcmdStatus(res));
 
 	free((void *) evalues[0]);
+	free((void *) evalues[1]);
+	free((void *) evalues[2]);
+	free((void *) evalues[3]);
+	free((void *) evalues[5]);
+	free((void *) evalues[6]);
 	
 	return 0;
 }
@@ -217,7 +292,34 @@ edit_bank_rec(PGresult *res, PGconn *conn)
 int
 edit_acc_rec(PGresult *res, PGconn *conn)
 {
-	//TODO
+	const char	*evalues[2];
+	int		elength[2];
+	int		ebinary[2] = {0, 1};
+	uint32_t	accid;
+
+	evalues[0] = malloc(BUFSIZE);
+
+	printf("Enter account ID to update: ");
+	scanf(" %d", &accid);
+	getchar();
+	accid = htonl((uint32_t) accid);
+	evalues[1] = (char *) &accid;
+	elength[1] = sizeof(accid);
+
+	printf("Enter new irate: ");
+	scanf("%32[^\n]", (char *) evalues[0]);
+	getchar();
+	elength[0] = strlen(evalues[0]);
+
+	res = PQexecParams(conn, "UPDATE account"
+			" SET irate = $1::numeric(5,2)"
+			" WHERE accid = $2::int4", 2, NULL, evalues, elength,
+			ebinary, 0);
+	delete_error(res, conn);
+
+	printf("Status: %s\n", PQcmdStatus(res));
+
+	free((void *) evalues[0]);
 
 	return 0;
 }
@@ -225,10 +327,16 @@ edit_acc_rec(PGresult *res, PGconn *conn)
 int
 insert_trans_rec(PGresult *res, PGconn *conn)
 {
-	float		amount;
+	float		amount, balance, update;
 	int		c, accID, transID;
 	char		buf[BUFSIZE * 8];
 	char		str[3][BUFSIZE];
+	const char	*svalues[1], *uvalues[2];
+	int		slength[1], ulength[2];
+	int		sbinary[1] = {1}, ubinary[2] = {0, 1};
+	uint32_t	account;
+
+	uvalues[0] = malloc(BUFSIZE);
 
 	printf("Enter merchant: ");
 	scanf("%32[^\n]", (char *) str[0]);
@@ -254,6 +362,32 @@ insert_trans_rec(PGresult *res, PGconn *conn)
 	scanf(" %d", &accID);
 	getchar();
 
+	account = htonl((uint32_t) accID);
+	svalues[0] = (char *) &account;
+	slength[0] = sizeof(account);
+	uvalues[1] = (char *) &account;
+	ulength[1] = sizeof(account);
+	
+	res = PQexecParams(conn, "SELECT balance FROM account "
+				"WHERE accid = $1::int4", 1, NULL, svalues,
+				slength, sbinary, 0);
+	select_error(res, conn);
+
+	if(PQntuples(res) == 1)
+	{
+		balance = atof(PQgetvalue(res, 0, 0));
+		update = amount + balance;
+		printf("\nAmount: %f Balance: %f Update: %f\n", amount, balance, update);
+
+		snprintf(uvalues[0], BUFSIZE, "%f", update);
+		ulength[0] = strlen(svalues[0]);
+	}
+	else
+	{
+		printf("ERROR: ACCOUNT NOT FOUND. ABORTING INSERT");
+		return 0;
+	}
+
 	c = snprintf(buf, BUFSIZE * 8, "INSERT INTO transaction VALUES ('%s', '%s', '%s', %f, %d, %d)", str[0], str[1], str[2], amount, transID, accID);
 
 	res = PQexecParams(conn, buf, 0, NULL, NULL, NULL, NULL, 0);
@@ -264,6 +398,14 @@ insert_trans_rec(PGresult *res, PGconn *conn)
 	res = PQexecParams(conn, "SELECT * FROM transaction", 0, NULL, NULL, NULL, NULL, 0);
 	select_error(res, conn);
 	display_insertion_menu(res);
+	
+	res = PQexecParams(conn, "UPDATE account"
+			" SET balance = $1::numeric(12,2)"
+			" WHERE accid = $2::int4", 2, NULL, uvalues,
+			ulength, ubinary, 0);
+	delete_error(res, conn);
+
+	free((void *) uvalues[0]);
 
 	return 0;
 }
