@@ -31,6 +31,7 @@
 #define BUFSIZE 32
 #define ADMINNME "admin"
 #define ADMINPSWD "5849d2075de68c2276306abd21e7114d8"
+#define MAX_ATTEMPTS 3
 
 bool login(char *, char *, char *, PGresult *, PGconn *);
 
@@ -53,5 +54,11 @@ int accounts(PGresult *, PGconn *);
 int customer(PGresult *, PGconn *);
 int banks(PGresult *, PGconn *);
 int transactions(PGresult *, PGconn *);
+
+int cust_view_acc(PGresult *, PGconn *, uint32_t);
+int cust_view_bank(PGresult *, PGconn *, uint32_t);
+int cust_view_trans(PGresult *, PGconn *, uint32_t);
+int cust_view_info(PGresult *, PGconn *, uint32_t);
+int cust_edit_info(PGresult *, PGconn *, uint32_t);
 
 #endif
