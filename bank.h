@@ -42,7 +42,10 @@ int insert_trans_rec(PGresult *, PGconn *);
 int insert_cust_rec(PGresult *, PGconn *);
 int insert_bank_rec(PGresult *, PGconn *);
 int insert_acc_rec(PGresult *, PGconn *);
-int delete_rec(PGresult *, PGconn *);
+int delete_trans_rec(PGresult *, PGconn *);
+int delete_cust_rec(PGresult *, PGconn *);
+int delete_bank_rec(PGresult *, PGconn *);
+int delete_acc_rec(PGresult *, PGconn *);
 int view_rec(PGresult *, PGconn *, char);
 int viewid_rec(PGresult *, PGconn *, char);
 
