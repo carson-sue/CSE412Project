@@ -7,8 +7,6 @@
 #include "bank.h"
 #include "display.h"
 
-#define MAX_ATTEMPTS 3
-
 int
 main(int argc, char *argv[])
 {
@@ -81,9 +79,8 @@ main(int argc, char *argv[])
 				banks(res, conn);
 			else if (c == 'c')
 				customer(res, conn);
-			else if (c == 't') {
+			else if (c == 't') 
 				transactions(res, conn);
-			}
 			else
 			exit_success(conn);
 
@@ -91,23 +88,35 @@ main(int argc, char *argv[])
 	}
 	else if(userType == 'c')
 	{
-		//TODO
+		const char *uvalues[1] = {name};
+		int ulength[1] = {sizeof(name)};
+		int ubinary[1] = {0};
+		uint32_t id;
+		
+		
+		res = PQexecParams(conn, "SELECT cusid FROM customer WHERE "
+			       "usern = $1::varchar", 1, NULL, uvalues, ulength, ubinary, 0);
+		select_error(res, conn);
+		
+		id = htonl((uint32_t) atoi(PQgetvalue(res, 0, 0)));
+		
 		do {
 			printf("\n===========  Choose an option:  ===========\n");
-			printf("\t-a View/edit accounts\n\t-b View banks"
-				"\n\t-c View/edit customers\n\t"
-				"-t View/edit transactions\n\t-x Exit\n");
+			printf("\t-a View your accounts\n\t-b View banks locations"
+				"\n\t-t View your transactions\n\t-v View your info"
+				"\n\t-e Edit your info\n\t-x Exit\n");
 			c = getchar();
 			getchar();
 			if (c == 'a')
-				accounts(res, conn);
+				cust_view_acc(res, conn, id);
 			else if (c == 'b')
-				banks(res, conn);
-			else if (c == 'c')
-				customer(res, conn);
-			else if (c == 't') {
-				transactions(res, conn);
-			}
+				cust_view_bank(res, conn, id);
+			else if (c == 't')
+				cust_view_trans(res, conn, id);
+			else if (c == 'v') 
+				cust_view_info(res, conn, id);
+			else if (c == 'e') 
+				cust_edit_info(res, conn, id);
 			else
 			exit_success(conn);
 
