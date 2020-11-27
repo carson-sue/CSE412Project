@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 13.1
--- Dumped by pg_dump version 13.1
+-- Dumped from database version 13.1 (Ubuntu 13.1-1.pgdg20.04+1)
+-- Dumped by pg_dump version 13.1 (Ubuntu 13.1-1.pgdg20.04+1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -115,6 +115,7 @@ COPY public.account (balance, irate, accid, cusid) FROM stdin;
 360.00	0.12	2598	5
 2000000.00	0.00	908	2
 16000.00	0.07	1991	3
+100.00	0.01	0	0
 \.
 
 
@@ -173,17 +174,18 @@ Kraig Connel                  	6	6
 --
 
 COPY public.customer (usern, phash, fullname, cusid, bankid) FROM stdin;
-Rebelc1219                      	98d8847692eac5d1ab412082d561nf008                            	Rebecca Curry                                     	1	2
-Smithy19                        	ee8b08e5af7d40a93dd5fb29e1602483a                            	John Doe                                          	2	3
-Greenery23                      	c665ed81ebccb0f6239488e89657f9220                            	Bob Greene                                        	3	2
-AndyMan                         	57ce107b964f44b7a8750fedba0752872                            	Andrew Willis                                     	4	1
-DRich2                          	fb86a09b43a28359400515394850c398b                            	Dennis Richards                                   	5	5
-LouisvilleSlugger               	1c49a180c842191f507d2fa04fc58941d                            	Kevin Louis                                       	6	3
-JJamison14                      	6d5f00fcac7bc25fbcebae7ea4ec9422f                            	James Jamison                                     	8	3
-Barks1993                       	a93284cfb26a390d62df2e71eb99aa968                            	Greg Barks                                        	9	3
-SJohnson3                       	79ca34b83003e6c88133e0674cad3f3ed                            	Sarah Johnson                                     	10	2
-Smithy19                        	3ccf757ecd97f0f668ed1cddd7bde8ef3                            	John Doe                                          	11	3
-RMartin5                        	859bc3b45c2a34a062b3893aa91b5d55f                            	Robert Martin                                     	7	2
+Rebelc1219                      	98d8847692eac5d1ab412082d561nf008                           	Rebecca Curry                                     	1	2
+Smithy19                        	ee8b08e5af7d40a93dd5fb29e1602483a                           	John Doe                                          	2	3
+Greenery23                      	c665ed81ebccb0f6239488e89657f9220                           	Bob Greene                                        	3	2
+AndyMan                         	57ce107b964f44b7a8750fedba0752872                           	Andrew Willis                                     	4	1
+DRich2                          	fb86a09b43a28359400515394850c398b                           	Dennis Richards                                   	5	5
+LouisvilleSlugger               	1c49a180c842191f507d2fa04fc58941d                           	Kevin Louis                                       	6	3
+JJamison14                      	6d5f00fcac7bc25fbcebae7ea4ec9422f                           	James Jamison                                     	8	3
+Barks1993                       	a93284cfb26a390d62df2e71eb99aa968                           	Greg Barks                                        	9	3
+SJohnson3                       	79ca34b83003e6c88133e0674cad3f3ed                           	Sarah Johnson                                     	10	2
+Smithy19                        	3ccf757ecd97f0f668ed1cddd7bde8ef3                           	John Doe                                          	11	3
+RMartin5                        	859bc3b45c2a34a062b3893aa91b5d55f                           	Robert Martin                                     	7	2
+testuser                        	98d8847692eac5d1ab412082d561bf008                           	Not Real                                          	0	1
 \.
 
 
