@@ -123,7 +123,7 @@ edit_trans_rec(PGresult *res, PGconn *conn)
 	}
 	else
 	{
-		printf("ERROR: ACCOUNT NOT FOUND. ABORTING EDIT");
+		printf("\nERROR: ACCOUNT NOT FOUND. ABORTING EDIT\n");
 		return 0;
 	}
 
@@ -328,7 +328,7 @@ int
 insert_trans_rec(PGresult *res, PGconn *conn)
 {
 	float		amount, balance, update;
-	int		c, accID, transID;
+	int		accID, transID;
 	char		buf[BUFSIZE * 8];
 	char		str[3][BUFSIZE];
 	const char	*svalues[1], *uvalues[2];
@@ -384,11 +384,12 @@ insert_trans_rec(PGresult *res, PGconn *conn)
 	}
 	else
 	{
-		printf("ERROR: ACCOUNT NOT FOUND. ABORTING INSERT");
+		printf("\nERROR: ACCOUNT NOT FOUND. ABORTING INSERT\n");
 		return 0;
 	}
 
-	c = snprintf(buf, BUFSIZE * 8, "INSERT INTO transaction VALUES ('%s', '%s', '%s', %f, %d, %d)", str[0], str[1], str[2], amount, transID, accID);
+	snprintf(buf, BUFSIZE * 8, "INSERT INTO transaction VALUES ('%s', '%s', '%s', %f, %d, %d)",
+			str[0], str[1], str[2], amount, transID, accID);
 
 	res = PQexecParams(conn, buf, 0, NULL, NULL, NULL, NULL, 0);
 	insert_error(res, conn);
@@ -413,7 +414,121 @@ insert_trans_rec(PGresult *res, PGconn *conn)
 int
 insert_cust_rec(PGresult *res, PGconn *conn)
 {
-	//TODO
+	float		balance, irate;
+	int		accID, custID, bankID;
+	char		buf[BUFSIZE * 8];
+	char		str[3][BUFSIZE];
+	char		*hash;
+	const char	*evalues[1], *svalues[2];
+	int		elength[1], slength[2];
+	int		ebinary[1] = {1}, sbinary[2] = {0, 1};
+	uint32_t	queryID;
+
+	printf("Enter username: ");
+	scanf("%32[^\n]", (char *) str[0]);
+	getchar();
+
+	printf("Enter password: ");
+	scanf("%32[^\n]", (char *) str[1]);
+	getchar();
+	
+	printf("Enter full name: ");
+	scanf("%32[^\n]", (char *) str[2]);
+	getchar();
+
+	printf("Enter customer id: ");
+	scanf(" %d", &custID);
+	getchar();
+
+	printf("Enter bank ID: ");
+	scanf(" %d", &bankID);
+	getchar();
+
+	printf("Enter account ID: ");
+	scanf(" %d", &accID);
+	getchar();
+
+	printf("Enter intial balance: ");
+	scanf(" %f", &balance);
+	getchar();
+	
+	printf("Enter irate: ");
+	scanf(" %f", &irate);
+	getchar();
+
+	svalues[0] = str[0];
+	slength[0] = strlen(str[0]);
+
+	queryID = htonl((uint32_t) custID);
+	svalues[1] = (char *) &queryID;
+	slength[1] = sizeof(queryID);
+	
+	res = PQexecParams(conn, "SELECT * FROM customer "
+				"WHERE usern = $1::character(50) "
+				"or cusid = $2::int4", 2, NULL, svalues,
+				slength, sbinary, 0);
+	select_error(res, conn);
+
+	if(PQntuples(res) > 0)
+	{
+		printf("\nERROR. USERNAME OR CUSTOMER ID IS TAKEN. ABORTING INSERT...\n");
+		return 0;
+	}
+	
+	queryID = htonl((uint32_t) bankID);
+	evalues[0] = (char *) &queryID;
+	elength[0] = sizeof(queryID);
+	
+	res = PQexecParams(conn, "SELECT * FROM bank "
+				"WHERE bankid = $1::int4", 1, NULL, evalues,
+				elength, ebinary, 0);
+	select_error(res, conn);
+
+	if(PQntuples(res) == 0)
+	{
+		printf("\nERROR. BANK NOT FOUND. ABORTING INSERT...\n");
+		return 0;
+	}
+	
+	queryID = htonl((uint32_t) accID);
+	evalues[0] = (char *) &queryID;
+	elength[0] = sizeof(queryID);
+	
+	res = PQexecParams(conn, "SELECT * FROM account "
+				"WHERE accid = $1::int4", 1, NULL, evalues,
+				elength, ebinary, 0);
+	select_error(res, conn);
+
+	if(PQntuples(res) > 0)
+	{
+		printf("\nERROR. ACCOUNT ID IS TAKEN. ABORTING INSERT...\n");
+		return 0;
+	}
+
+	hash = generateHash(str[1]);
+
+	snprintf(buf, BUFSIZE * 8, "INSERT INTO customer VALUES ('%s', '%s', '%s', %d, %d)",
+		       	str[0], hash, str[2], custID, bankID);
+
+	res = PQexecParams(conn, buf, 0, NULL, NULL, NULL, NULL, 0);
+	insert_error(res, conn);
+	printf("Status: %s\n", PQcmdStatus(res));
+	PQclear(res);
+
+	res = PQexecParams(conn, "SELECT * FROM customer", 0, NULL, NULL, NULL, NULL, 0);
+	select_error(res, conn);
+	display_insertion_menu(res);
+
+	snprintf(buf, BUFSIZE * 8, "INSERT INTO account VALUES (%f, %f, %d, %d)", balance, irate, accID, custID);
+
+	res = PQexecParams(conn, buf, 0, NULL, NULL, NULL, NULL, 0);
+	insert_error(res, conn);
+	printf("Status: %s\n", PQcmdStatus(res));
+	PQclear(res);
+
+	res = PQexecParams(conn, "SELECT * FROM account", 0, NULL, NULL, NULL, NULL, 0);
+	select_error(res, conn);
+	display_insertion_menu(res);
 	
 	return 0;
 }
@@ -421,7 +536,104 @@ insert_cust_rec(PGresult *res, PGconn *conn)
 int
 insert_bank_rec(PGresult *res, PGconn *conn)
 {
-	//TODO
+	int		bankID;
+	char		b;
+	char		buf[BUFSIZE * 8];
+	char		str[4][BUFSIZE];
+	const char	*evalues[1], *svalues[2];
+	int		elength[1], slength[2];
+	int		ebinary[1] = {1}, sbinary[2] = {0, 0};
+	uint32_t	queryID;
+
+	printf("Insert new bank? (y/n) ");
+	scanf(" %c", &b);
+	getchar();
+
+	printf("Enter bank id: ");
+	scanf(" %d", &bankID);
+	getchar();
+
+	queryID = htonl((uint32_t) bankID);
+	evalues[0] = (char *) &queryID;
+	elength[0] = sizeof(queryID);
+	
+	res = PQexecParams(conn, "SELECT * FROM bank "
+				"WHERE bankid = $1::int4", 1, NULL, evalues,
+				elength, ebinary, 0);
+	select_error(res, conn);
+	if(b == 'y')
+	{
+
+
+		if(PQntuples(res) > 0)
+		{
+			printf("\nERROR. BANK ID IS TAKEN. ABORTING INSERT...\n");
+			return 0;
+		}
+
+		snprintf(buf, BUFSIZE * 8, "INSERT INTO bank VALUES (%d)", bankID);
+
+		res = PQexecParams(conn, buf, 0, NULL, NULL, NULL, NULL, 0);
+		insert_error(res, conn);
+		printf("Status: %s\n", PQcmdStatus(res));
+		PQclear(res);
+
+		res = PQexecParams(conn, "SELECT * FROM bank", 0, NULL, NULL, NULL, NULL, 0);
+		select_error(res, conn);
+		display_insertion_menu(res);
+
+		return 0;
+	}
+
+	if(PQntuples(res) == 0)
+	{
+		printf("\nERROR. BANK NOT FOUND. ABORTING INSERT...\n");
+		return 0;
+	}
+
+	printf("Enter address: ");
+	scanf("%32[^\n]", (char *) str[0]);
+	getchar();
+	svalues[0] = str[0];
+	slength[0] = strlen(str[0]);
+
+	printf("Enter city: ");
+	scanf("%32[^\n]", (char *) str[1]);
+	getchar();
+	svalues[1] = str[1];
+	slength[1] = strlen(str[1]);
+	
+	printf("Enter state: ");
+	scanf("%32[^\n]", (char *) str[2]);
+	getchar();
+	
+	printf("Enter zip code: ");
+	scanf("%32[^\n]", (char *) str[3]);
+	getchar();	
+	
+	res = PQexecParams(conn, "SELECT * FROM bankbranch "
+				"WHERE addr = $1::varchar(50) "
+				"and city = $2::varchar(30)", 2, NULL, svalues,
+				slength, sbinary, 0);
+	select_error(res, conn);
+
+	if(PQntuples(res) > 0)
+	{
+		printf("\nERROR. ADDRESS ALREADY USED. ABORTING INSERT...\n");
+		return 0;
+	}
+
+	snprintf(buf, BUFSIZE * 8, "INSERT INTO bankbranch VALUES ('%s', '%s', '%s', '%s', %d)", 
+			str[0], str[1], str[2], str[3], bankID);
+
+	res = PQexecParams(conn, buf, 0, NULL, NULL, NULL, NULL, 0);
+	insert_error(res, conn);
+	printf("Status: %s\n", PQcmdStatus(res));
+	PQclear(res);
+
+	res = PQexecParams(conn, "SELECT * FROM bankbranch", 0, NULL, NULL, NULL, NULL, 0);
+	select_error(res, conn);
+	display_insertion_menu(res);
 
 	return 0;
 }
@@ -429,7 +641,70 @@ insert_bank_rec(PGresult *res, PGconn *conn)
 int
 insert_acc_rec(PGresult *res, PGconn *conn)
 {
-	//TODO
+	float		balance, irate;
+	int		accID, custID;
+	char		buf[BUFSIZE * 8];
+	const char	*evalues[1];
+	int		elength[1];
+	int		ebinary[1] = {1};
+	uint32_t	queryID;
+
+	printf("Enter customer id: ");
+	scanf(" %d", &custID);
+	getchar();
+
+	printf("Enter account ID: ");
+	scanf(" %d", &accID);
+	getchar();
+
+	printf("Enter intial balance: ");
+	scanf(" %f", &balance);
+	getchar();
+	
+	printf("Enter irate: ");
+	scanf(" %f", &irate);
+	getchar();
+
+	queryID = htonl((uint32_t) accID);
+	evalues[0] = (char *) &queryID;
+	elength[0] = sizeof(queryID);
+	
+	res = PQexecParams(conn, "SELECT * FROM account "
+				"WHERE accid = $1::int4", 1, NULL, evalues,
+				elength, ebinary, 0);
+	select_error(res, conn);
+
+	if(PQntuples(res) > 0)
+	{
+		printf("\nERROR. ACCOUNT ID IS TAKEN. ABORTING INSERT...\n");
+		return 0;
+	}
+	
+	queryID = htonl((uint32_t) custID);
+	evalues[0] = (char *) &queryID;
+	elength[0] = sizeof(queryID);
+	
+	res = PQexecParams(conn, "SELECT * FROM customer "
+				"WHERE cusid = $1::int4", 1, NULL, evalues,
+				elength, ebinary, 0);
+	select_error(res, conn);
+
+	if(PQntuples(res) == 0)
+	{
+		printf("\nERROR. CUSTOMER ID NOT FOUND. ABORTING INSERT...\n");
+		return 0;
+	}
+
+	snprintf(buf, BUFSIZE * 8, "INSERT INTO account VALUES (%f, %f, %d, %d)", balance, irate, accID, custID);
+
+	res = PQexecParams(conn, buf, 0, NULL, NULL, NULL, NULL, 0);
+	insert_error(res, conn);
+	printf("Status: %s\n", PQcmdStatus(res));
+	PQclear(res);
+
+	res = PQexecParams(conn, "SELECT * FROM account", 0, NULL, NULL, NULL, NULL, 0);
+	select_error(res, conn);
+	display_insertion_menu(res);
 
 	return 0;
 }
@@ -585,14 +860,17 @@ viewid_rec(PGresult *res, PGconn *conn, char type)
 	return 0;
 }
 
-//TODO expand delete for account, bank, and customer
 int
-delete_rec(PGresult *res, PGconn *conn)
+delete_trans_rec(PGresult *res, PGconn *conn)
 {
-	uint32_t	keyid;
-	const char	*dvalues[1];
-	int		dlength[1];
-	int		dbinary[1];
+	uint32_t	keyid, accid;
+	const char	*dvalues[1], *uvalues[2];
+	int		dlength[1], ulength[2];
+	int		dbinary[1] = {1}, ubinary[2] = {0, 1};
+	bool		deleted = false;
+	float		balance, amount;
+
+	uvalues[0] = malloc(BUFSIZE);
 
 	printf("Enter transaction ID to delete: ");
 	scanf(" %d", &keyid);
@@ -600,10 +878,55 @@ delete_rec(PGresult *res, PGconn *conn)
 	keyid = htonl((uint32_t) keyid);
 	dvalues[0] = (char *) &keyid;
 	dlength[0] = sizeof(keyid);
+
+	res = PQexecParams(conn, "SELECT amount, accid FROM transaction "
+				"WHERE transid = $1::int4", 1, NULL, dvalues,
+				dlength, dbinary, 0);
+	select_error(res, conn);
+
+	if(PQntuples(res) == 1)
+	{
+		amount = atof(PQgetvalue(res, 0, 0));
+		accid = htonl((uint32_t) atoi(PQgetvalue(res, 0, 1)));
+		dvalues[0] = (char *) &accid;
+		dlength[0] = sizeof(accid);
+		uvalues[1] = (char *) &accid;
+		ulength[1] = sizeof(accid);
+	}
+
+	res = PQexecParams(conn, "SELECT balance FROM account "
+				"WHERE accid = $1::int4", 1, NULL, dvalues,
+				dlength, dbinary, 0);
+	select_error(res, conn);
+
+	if(PQntuples(res) == 1)
+	{
+		balance = atof(PQgetvalue(res, 0, 0));
+		balance -= amount;
+		
+		snprintf(uvalues[0], BUFSIZE, "%f", balance);
+		ulength[0] = strlen(uvalues[0]);
+	}
+	else
+		deleted = true;
+
+	if(!deleted)
+	{
+		res = PQexecParams(conn, "UPDATE account"
+				" SET balance = $1::numeric(12,2)"
+				" WHERE accid = $2::int4", 2, NULL, uvalues,
+				ulength, ubinary, 0);
+		delete_error(res, conn);
+	}
+
+	dvalues[0] = (char *) &keyid;
+	dlength[0] = sizeof(keyid);
 	dbinary[0] = 1;
 	res = PQexecParams(conn, "DELETE FROM transaction WHERE transid = $1::int4", 1, NULL, dvalues, dlength, dbinary, 1);
 	printf("Status: %s\n", PQcmdStatus(res));
 	delete_error(res, conn);
+
+	free((void *) uvalues[0]);
 
 	return 0;
 }
@@ -616,8 +939,8 @@ accounts(PGresult *res, PGconn *conn)
 	do {
 		printf("\n===========       Accounts      ===========\n");
 		printf("Choose an option:\n");
-		printf("\n\t-e Edit account information\n\t"
-			"-v View bank accounts\n\t"
+		printf("\n\t-d Delete account\n\t-e Edit account information\n\t"
+			"-i Insert new account\n\t-v View bank accounts\n\t"
 			"-q Quit to main menu\n\t-x Exit program\n");
 		c = getchar();
 		getchar();
@@ -625,6 +948,8 @@ accounts(PGresult *res, PGconn *conn)
 			viewid_rec(res, conn, 'a');
 		else if (c == 'e')
 			edit_acc_rec(res, conn);
+		else if(c =='i')
+			insert_acc_rec(res, conn);
 		else if (c == 'x')
 			exit_success(conn);
 	} while (c != EOF && c != '\n' && c != 'q');
@@ -640,8 +965,8 @@ customer(PGresult *res, PGconn *conn)
 	do {
 		printf("\n===========      Customers      ===========\n");
 		printf("Choose an option:\n");
-		printf("\n\t-e Edit customer information\n\t"
-			"-v View customer accounts\n\t"
+		printf("\n\t-d Delete customer\n\t-e Edit customer information\n\t"
+			"-i Insert new customer\n\t-v View customer accounts\n\t"
 			"-q Quit to main menu\n\t-x Exit program\n");
 		c = getchar();
 		getchar();
@@ -649,10 +974,36 @@ customer(PGresult *res, PGconn *conn)
 			viewid_rec(res, conn, 'c');
 		else if (c == 'e')
 			edit_cust_rec(res, conn);
+		else if (c == 'i')
+			insert_cust_rec(res, conn);
 		else if (c == 'x')
 			exit_success(conn);
 	} while (c != EOF && c != '\n' && c != 'q');
 
+	return 0;
+}
+
+int
+delete_cust_rec(PGresult *res, PGconn *conn)
+{
+	//TODO
+
+	return 0;
+}
+
+int
+delete_bank_rec(PGresult *res, PGconn *conn)
+{
+	//TODO
+	
+	return 0;
+}
+
+int
+delete_acc_rec(PGresult *res, PGconn *conn)
+{
+	//TODO
+	
 	return 0;
 }
 
@@ -664,8 +1015,8 @@ banks(PGresult *res, PGconn *conn)
 	do {
 		printf("\n===========        Banks        ===========\n");
 		printf("Choose an option:\n");
-		printf("\n\t-e Edit bank information\n\t"
-			"-v View bank branches\n\t"
+		printf("\n\t-d Delete bank branch\n\t-e Edit bank branches information\n\t"
+			"-i Insert new bank or bank branch\n\t-v View bank branches\n\t"
 			"-q Quit to main menu\n\t-x Exit program\n");
 		c = getchar();
 		getchar();
@@ -673,6 +1024,8 @@ banks(PGresult *res, PGconn *conn)
 			viewid_rec(res, conn, 'b');
 		else if (c == 'e')
 			edit_bank_rec(res, conn);
+		else if (c == 'i')
+			insert_bank_rec(res, conn);
 		else if (c == 'x')
 			exit_success(conn);
 	} while (c != EOF && c != '\n' && c != 'q');
@@ -694,7 +1047,7 @@ transactions(PGresult *res, PGconn *conn)
 		c = getchar();
 		getchar();
 		if (c == 'd')
-			delete_rec(res, conn);
+			delete_trans_rec(res, conn);
 		else if (c == 'e')
 			edit_trans_rec(res, conn);
 		else if (c == 'i')
