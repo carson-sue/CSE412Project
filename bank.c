@@ -141,7 +141,7 @@ edit_trans_rec(PGresult *res, PGconn *conn)
 		amount -= temp;
 		amount += balance;
 		
-		snprintf(uvalues[0], BUFSIZE, "%f", amount);
+		snprintf((char *)uvalues[0], BUFSIZE, "%f", amount);
 		ulength[0] = strlen(svalues[0]);
 	}
 
@@ -379,7 +379,7 @@ insert_trans_rec(PGresult *res, PGconn *conn)
 		update = amount + balance;
 		printf("\nAmount: %f Balance: %f Update: %f\n", amount, balance, update);
 
-		snprintf(uvalues[0], BUFSIZE, "%f", update);
+		snprintf((char *)uvalues[0], BUFSIZE, "%f", update);
 		ulength[0] = strlen(svalues[0]);
 	}
 	else
@@ -904,7 +904,7 @@ delete_trans_rec(PGresult *res, PGconn *conn)
 		balance = atof(PQgetvalue(res, 0, 0));
 		balance -= amount;
 		
-		snprintf(uvalues[0], BUFSIZE, "%f", balance);
+		snprintf((char *)uvalues[0], BUFSIZE, "%f", balance);
 		ulength[0] = strlen(uvalues[0]);
 	}
 	else
@@ -932,6 +932,114 @@ delete_trans_rec(PGresult *res, PGconn *conn)
 }
 
 int
+delete_cust_rec(PGresult *res, PGconn *conn)
+{
+	uint32_t	keyid;
+	const char	*dvalues[1];
+	int		dlength[1];
+	int		dbinary[1];
+
+	printf("Enter customer ID to delete: ");
+	scanf(" %d", &keyid);
+	getchar();
+	keyid = htonl((uint32_t) keyid);
+	dvalues[0] = (char *) &keyid;
+	dlength[0] = sizeof(keyid);
+	dbinary[0] = 1;
+	
+	
+	res = PQexecParams(conn, "SELECT accid FROM account WHERE cusid = $1::int4",
+				1, NULL, dvalues, dlength, dbinary, 0);
+	select_error(res, conn);
+			
+	/*I didn't want to delete from transaction because of how messy it is but
+	it wouldn't let me delete accounts without deleting transactions*/
+	int tuple = PQntuples(res);	
+	for(int i = 0; i < tuple; i++)
+	{
+		uint32_t temp = htonl((uint32_t) atoi(PQgetvalue(res, i, 0)));
+		dvalues[0] = (char *) &temp;
+		dlength[0] = sizeof(temp);
+		
+		res = PQexecParams(conn, "DELETE FROM transaction WHERE accid = $1::int4", 1, NULL, dvalues, dlength, dbinary, 1);
+		delete_error(res, conn);
+		
+		dvalues[0] = (char *) &keyid;
+		dlength[0] = sizeof(keyid);
+		
+		res = PQexecParams(conn, "SELECT accid FROM account WHERE cusid = $1::int4",
+					1, NULL, dvalues, dlength, dbinary, 0);
+		select_error(res, conn);
+	}
+	
+	dvalues[0] = (char *) &keyid;
+	dlength[0] = sizeof(keyid);
+	
+	res = PQexecParams(conn, "DELETE FROM account WHERE cusid = $1::int4", 1, NULL, dvalues, dlength, dbinary, 1);
+	delete_error(res, conn);
+	
+	res = PQexecParams(conn, "DELETE FROM customer WHERE cusid = $1::int4", 1, NULL, dvalues, dlength, dbinary, 1);
+	printf("Status: %s\n", PQcmdStatus(res));
+	delete_error(res, conn);
+	
+	return 0;
+}
+
+int
+delete_bank_rec(PGresult *res, PGconn *conn)
+{
+	const char	*dvalues[2];
+	int		dlength[2];
+	int		dbinary[2] = {0, 0};
+	
+	dvalues[0] = malloc(BUFSIZE);
+	dvalues[1] = malloc(BUFSIZE);
+
+	printf("Enter bank address to delete: ");
+	scanf("%32[^\n]", (char *) dvalues[0]);
+	getchar();
+	dlength[0] = strlen(dvalues[0]);
+	
+	printf("Enter bank city to delete: ");
+	scanf("%32[^\n]", (char *) dvalues[1]);
+	getchar();
+	dlength[1] = strlen(dvalues[1]);
+
+
+	res = PQexecParams(conn, "DELETE FROM bankbranch WHERE addr = $1::varchar(50) "
+				"and city = $2::varchar(30)", 2, NULL, dvalues, dlength, dbinary, 1);
+	printf("Status: %s\n", PQcmdStatus(res));
+	delete_error(res, conn);
+	
+	free((void *) dvalues[0]);
+	free((void *) dvalues[1]);
+	
+	return 0;
+}
+
+int
+delete_acc_rec(PGresult *res, PGconn *conn)
+{
+	uint32_t	keyid;
+	const char	*dvalues[1];
+	int		dlength[1];
+	int		dbinary[1];
+
+	printf("Enter account ID to delete: ");
+	scanf(" %d", &keyid);
+	getchar();
+	keyid = htonl((uint32_t) keyid);
+	dvalues[0] = (char *) &keyid;
+	dlength[0] = sizeof(keyid);
+	dbinary[0] = 1;
+	res = PQexecParams(conn, "DELETE FROM account WHERE accid = $1::int4", 1, NULL, dvalues, dlength, dbinary, 1);
+	printf("Status: %s\n", PQcmdStatus(res));
+	delete_error(res, conn);
+	
+	return 0;
+}
+
+int
 accounts(PGresult *res, PGconn *conn)
 {
 	char	c;
@@ -948,8 +1056,10 @@ accounts(PGresult *res, PGconn *conn)
 			viewid_rec(res, conn, 'a');
 		else if (c == 'e')
 			edit_acc_rec(res, conn);
-		else if(c =='i')
+		else if (c =='i')
 			insert_acc_rec(res, conn);
+		else if (c == 'd')
+			delete_acc_rec(res, conn);
 		else if (c == 'x')
 			exit_success(conn);
 	} while (c != EOF && c != '\n' && c != 'q');
@@ -976,34 +1086,12 @@ customer(PGresult *res, PGconn *conn)
 			edit_cust_rec(res, conn);
 		else if (c == 'i')
 			insert_cust_rec(res, conn);
+		else if (c == 'd')
+			delete_cust_rec(res, conn);
 		else if (c == 'x')
 			exit_success(conn);
 	} while (c != EOF && c != '\n' && c != 'q');
 
-	return 0;
-}
-
-int
-delete_cust_rec(PGresult *res, PGconn *conn)
-{
-	//TODO
-
-	return 0;
-}
-
-int
-delete_bank_rec(PGresult *res, PGconn *conn)
-{
-	//TODO
-	
-	return 0;
-}
-
-int
-delete_acc_rec(PGresult *res, PGconn *conn)
-{
-	//TODO
-	
 	return 0;
 }
 
@@ -1026,6 +1114,8 @@ banks(PGresult *res, PGconn *conn)
 			edit_bank_rec(res, conn);
 		else if (c == 'i')
 			insert_bank_rec(res, conn);
+		else if (c == 'd')
+			delete_bank_rec(res, conn);
 		else if (c == 'x')
 			exit_success(conn);
 	} while (c != EOF && c != '\n' && c != 'q');
@@ -1058,5 +1148,240 @@ transactions(PGresult *res, PGconn *conn)
 			exit_success(conn);
 	} while (c != EOF && c != '\n' && c != 'q');
 
+	return 0;
+}
+
+int
+cust_view_acc(PGresult *res, PGconn *conn, uint32_t id)
+{
+	const char	*cvalues[1];
+	int		clength[1];
+	int		cbinary[1] = {1};
+	
+	cvalues[0] = (char *) &id;
+	clength[0] = sizeof(id);
+	
+	res = PQexecParams(conn, "SELECT balance, irate FROM account WHERE "
+		       "cusid = $1::int4", 1, NULL, cvalues, clength, cbinary, 0);
+	select_error(res, conn);
+	printf("Status: %s\n", PQcmdStatus(res));
+	display_results(res);
+	
+	return 0;
+}
+
+int
+cust_view_bank(PGresult *res, PGconn *conn, uint32_t id)
+{
+	bool 		city = false;
+	char		ans;
+	const char	*cvalues[1], *svalues[2], *csvalues[3];
+	int		clength[1], slength[2], cslength[3];
+	int		cbinary[1] = {1}, sbinary[2] = {1, 0}, csbinary[3] = {1, 0, 0};
+	uint32_t 	bankid;
+	
+	cvalues[0] = (char *) &id;
+	clength[0] = sizeof(id);
+	
+	res = PQexecParams(conn, "SELECT bankid FROM customer WHERE "
+		       "cusid = $1::int4", 1, NULL, cvalues, clength, cbinary, 0);
+	select_error(res, conn);
+	
+	bankid = htonl((uint32_t) atoi(PQgetvalue(res, 0, 0)));
+	
+	printf("Filter by City? (y/n) ");
+	ans = getchar();
+	getchar();
+	
+	if(ans != 'y')
+	{
+		printf("Filter by State? (y/n) ");
+		ans = getchar();
+		getchar();
+	}
+	else
+	{
+		csvalues[1] = malloc(BUFSIZE);
+		csvalues[2] = malloc(BUFSIZE);
+		
+		city = true;
+		
+		printf("Enter city: ");
+		scanf("%32[^\n]", (char *) csvalues[2]);
+		getchar();
+		cslength[2] = strlen(csvalues[2]);
+		
+		printf("Enter state: ");
+		scanf("%32[^\n]", (char *) csvalues[1]);
+		getchar();
+		cslength[1] = strlen(csvalues[1]);
+	}
+
+	if(city)
+	{
+		csvalues[0] = (char *) &bankid;
+		cslength[0] = sizeof(bankid);
+	
+		res = PQexecParams(conn, "SELECT addr, city, state, zip FROM bankbranch WHERE "
+		       "bankid = $1::int4 and state = $2::varchar(2) and city = $3::varchar(30)",
+		        3, NULL, csvalues, cslength, csbinary, 0);
+			select_error(res, conn);
+			
+		free((void *) csvalues[1]);
+		free((void *) csvalues[2]);
+	}
+	else if(ans == 'y')
+	{
+		svalues[1] = malloc(BUFSIZE);
+		
+		printf("Enter state: ");
+		scanf("%32[^\n]", (char *) svalues[1]);
+		getchar();
+		slength[1] = strlen(svalues[1]);
+		
+		svalues[0] = (char *) &bankid;
+		slength[0] = sizeof(bankid);
+	
+		res = PQexecParams(conn, "SELECT addr, city, state, zip FROM bankbranch WHERE "
+		       "bankid = $1::int4 and state = $2::varchar(2)", 2, NULL, svalues, slength, sbinary, 0);
+			select_error(res, conn);
+			
+		free((void *) svalues[1]);
+	}
+	else
+	{
+		cvalues[0] = (char *) &bankid;
+		clength[0] = sizeof(bankid);
+	
+		res = PQexecParams(conn, "SELECT addr, city, state, zip FROM bankbranch WHERE "
+		       "bankid = $1::int4", 1, NULL, cvalues, clength, cbinary, 0);
+			select_error(res, conn);
+	}
+	
+	
+	printf("Status: %s\n", PQcmdStatus(res));
+	display_results(res);
+	
+	return 0;
+}
+
+int
+cust_view_trans(PGresult *res, PGconn *conn, uint32_t id)
+{
+	const char	*cvalues[1];
+	int		clength[1];
+	int		cbinary[1] = {1};
+	uint32_t	accid;
+	
+	cvalues[0] = (char *) &id;
+	clength[0] = sizeof(id);
+	
+	res = PQexecParams(conn, "SELECT accid FROM account WHERE "
+		       "cusid = $1::int4", 1, NULL, cvalues, clength, cbinary, 0);
+	select_error(res, conn);
+	
+	int tuple = PQntuples(res);
+	for(int i = 0; i < tuple; i++)
+	{
+		accid = htonl((uint32_t) atoi(PQgetvalue(res, i, 0)));
+		cvalues[0] = (char *) &accid;
+		clength[0] = sizeof(accid);
+	
+		res = PQexecParams(conn, "SELECT merchant, description, date, amount FROM transaction WHERE "
+			       "accid = $1::int4", 1, NULL, cvalues, clength, cbinary, 0);
+		select_error(res, conn);
+		printf("\nStatus: %s\n", PQcmdStatus(res));
+		display_results(res);
+		
+		cvalues[0] = (char *) &id;
+		clength[0] = sizeof(id);
+	
+		res = PQexecParams(conn, "SELECT accid FROM account WHERE "
+			       "cusid = $1::int4", 1, NULL, cvalues, clength, cbinary, 0);
+		select_error(res, conn);
+	}
+	
+	return 0;
+}
+
+int
+cust_view_info(PGresult *res, PGconn *conn, uint32_t id)
+{
+	const char	*cvalues[1];
+	int		clength[1];
+	int		cbinary[1] = {1};
+	
+	cvalues[0] = (char *) &id;
+	clength[0] = sizeof(id);
+	
+	res = PQexecParams(conn, "SELECT usern, fullname FROM customer WHERE "
+		       "cusid = $1::int4", 1, NULL, cvalues, clength, cbinary, 0);
+	select_error(res, conn);
+	printf("Status: %s\n", PQcmdStatus(res));
+	display_results(res);
+	
+	return 0;
+}
+
+int
+cust_edit_info(PGresult *res, PGconn *conn, uint32_t id)
+{
+	const char	*cvalues[2], *nvalues[3];
+	int		clength[2], nlength[3];
+	int		cbinary[2] = {1, 0}, nbinary[3] = {0, 0, 1};
+	
+	cvalues[1] = malloc(BUFSIZE);
+	
+	printf("Confirm your password: ");
+	scanf("%32[^\n]", (char *) cvalues[1]);
+	getchar();
+	cvalues[1] = generateHash((char *) cvalues[1]);
+	clength[1] = strlen(cvalues[1]);
+	
+	printf("%s\n", cvalues[1]);
+	
+	cvalues[0] = (char *) &id;
+	clength[0] = sizeof(id);
+	
+	res = PQexecParams(conn, "SELECT * FROM customer WHERE "
+		       "cusid = $1::int4 and phash = $2::varchar", 2, NULL, cvalues, clength, cbinary, 0);
+	select_error(res, conn);
+	
+	if(PQntuples(res) == 0)
+	{
+		printf("\nERROR: INCORRECT PASSWORD. ABORTING...\n");
+		free((void *) cvalues[1]);
+		return 0;
+	}
+	
+	nvalues[0] = malloc(BUFSIZE);
+	nvalues[1] = malloc(BUFSIZE);
+	
+	printf("Enter new full name: ");
+	scanf("%32[^\n]", (char *) nvalues[0]);
+	getchar();
+	nlength[0] = strlen(nvalues[0]);
+	
+	printf("Enter new password: ");
+	scanf("%32[^\n]", (char *) nvalues[1]);
+	getchar();
+	nvalues[1] = generateHash((char *) nvalues[1]);
+	nlength[1] = strlen(nvalues[1]);
+	
+	nvalues[2] = cvalues[0];
+	nlength[2] = clength[0];
+	
+	res = PQexecParams(conn, "UPDATE customer"
+			" SET fullname = $1::varchar(32),"
+			" phash = $2::varchar(60)"
+			" WHERE cusid = $3::int4", 3, NULL, nvalues, nlength, nbinary, 0);
+	delete_error(res, conn);
+
+	printf("Status: %s\n", PQcmdStatus(res));
+
+	free((void *) cvalues[1]);		
+	free((void *) nvalues[0]);
+	free((void *) nvalues[1]);
+	
 	return 0;
 }
