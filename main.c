@@ -81,8 +81,8 @@ main(int argc, char *argv[])
 				customer(res, conn);
 			else if (c == 't') 
 				transactions(res, conn);
-			else
-			exit_success(conn);
+			else if (c != 'x')
+				printf("Input was invalid, please select a valid input\n");
 
 		} while (c != EOF && c != '\n' && c != 'x');
 	}
@@ -117,8 +117,8 @@ main(int argc, char *argv[])
 				cust_view_info(res, conn, id);
 			else if (c == 'e') 
 				cust_edit_info(res, conn, id);
-			else
-			exit_success(conn);
+			else if (c != 'x')
+				printf("Input was invalid, please select a valid input\n");
 
 		} while (c != EOF && c != '\n' && c != 'x');
 	}
